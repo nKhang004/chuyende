@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Điểm Danh Sinh Viên</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="container">
+            <h1 class="logo">📸 Hệ Thống Điểm Danh</h1>
+            <ul class="nav-menu">
+                <li><a href="/">Trang chủ</a></li>
+                <li><a href="/register">Đăng ký</a></li>
+                <li><a href="/attendance" class="active">Điểm danh</a></li>
+                <li><a href="/history">Lịch sử</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <div class="container">
+        <h2>Điểm Danh Sinh Viên</h2>
+        
+        <div class="attendance-tabs">
+            <button class="tab-btn active" data-tab="upload">📁 Upload Ảnh</button>
+            <button class="tab-btn" data-tab="webcam">📷 Webcam</button>
+        </div>
+
+        <!-- Tab Upload Ảnh -->
+        <div id="upload-tab" class="tab-content active">
+            <div class="form-container">
+                <h3>Điểm danh bằng Upload Ảnh</h3>
+                <p>Upload ảnh chứa khuôn mặt sinh viên cần điểm danh</p>
+
+                <form id="uploadForm" enctype="multipart/form-data">
+                    <div class="form-group">
+                        <label for="uploadImage">Chọn ảnh</label>
+                        <input type="file" id="uploadImage" name="image" accept="image/*" required>
+                    </div>
+
+                    <div class="image-preview" id="uploadPreview"></div>
+
+                    <button type="submit" class="btn btn-primary btn-block">
+                        <span class="btn-text">Điểm Danh</span>
+                        <span class="btn-loading" style="display: none;">
+                            <span class="spinner"></span> Đang nhận diện...
+                        </span>
+                    </button>
+                </form>
+
+                <div id="uploadMessage" class="message"></div>
+                <div id="uploadResults" class="results"></div>
+            </div>
+        </div>
+
+        <!-- Tab Webcam -->
+        <div id="webcam-tab" class="tab-content">
+            <div class="webcam-container">
+                <h3>Điểm danh bằng Webcam</h3>
+                <p>Nhấn "Bật Camera" và đứng trước camera để nhận diện</p>
+
+                <div class="video-wrapper">
+                    <img id="videoFeed" src="" alt="Camera feed" style="display: none;">
+                    <div id="cameraPlaceholder" class="camera-placeholder">
+                        <div class="camera-icon">📷</div>
+                        <p>Camera chưa được bật</p>
+                    </div>
+                </div>
+
+                <div class="webcam-controls">
+                    <button id="startCamera" class="btn btn-primary">Bật Camera</button>
+                    <button id="stopCamera" class="btn btn-secondary" style="display: none;">Tắt Camera</button>
+                    <button id="captureBtn" class="btn btn-success" style="display: none;">
+                        📸 Chụp & Điểm Danh
+                    </button>
+                </div>
+
+                <div id="webcamMessage" class="message"></div>
+                <div id="webcamResults" class="results"></div>
+            </div>
+        </div>
+    </div>
+
+    <footer>
+        <p>&copy; 2024 Hệ Thống Điểm Danh Sinh Viên</p>
+    </footer>
+
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    <script>
+        // Tab switching
+        const tabBtns = document.querySelectorAll('.tab-btn');
+        const tabContents = document.querySelectorAll('.tab-content');
+
+        tabBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                const tabName = btn.dataset.tab;
+                
+                tabBtns.forEach(b => b.classList.remove('active'));
+                tabContents.forEach(c => c.classList.remove('active'));
+                
+                btn.classList.add('active');
+                document.getElementById(tabName + '-tab').classList.add('active');
+
+                // Stop camera khi chuyển tab
+                if (tabName !== 'webcam') {
+                    stopCameraFeed();
+                }
+            });
+        });
+
+        // Upload Form
+        const uploadForm = document.getElementById('uploadForm');
+        const uploadImage = document.getElementById('uploadImage');
+        const uploadPreview = document.getElementById('uploadPreview');
+        const uploadMessage = document.getElementById('uploadMessage');
+        const uploadResults = document.getElementById('uploadResults');
+
+        uploadImage.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    uploadPreview.innerHTML = `<img src="${e.target.result}" alt="Preview">`;
+                    uploadPreview.style.display = 'block';
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+
+        uploadForm.addEventListener('submit', async function(e) {
+            e.preventDefault();
+
+            const formData = new FormData(uploadForm);
+            const btnText = uploadForm.querySelector('.btn-text');
+            const btnLoading = uploadForm.querySelector('.btn-loading');
+            const submitBtn = uploadForm.querySelector('button[type="submit"]');
+
+            btnText.style.display = 'none';
+            btnLoading.style.display = 'inline-flex';
+            submitBtn.disabled = true;
+            uploadMessage.style.display = 'none';
+            uploadResults.innerHTML = '';
+
+            try {
+                const response = await fetch('/attendance', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const result = await response.json();
+
+                btnText.style.display = 'inline';
+                btnLoading.style.display = 'none';
+                submitBtn.disabled = false;
+
+                if (result.success) {
+                    uploadMessage.textContent = 'Nhận diện thành công!';
+                    uploadMessage.className = 'message success';
+                    uploadMessage.style.display = 'block';
+
+                    uploadResults.innerHTML = result.students.map(s => `
+                        <div class="result-card ${s.status}">
+                            <h4>${s.name}</h4>
+                            <p>Mã SV: ${s.student_id}</p>
+                            <p>Độ chính xác: ${s.confidence}</p>
+                            <p class="status-msg">${s.message}</p>
+                        </div>
+                    `).join('');
+                } else {
+                    uploadMessage.textContent = result.message;
+                    uploadMessage.className = 'message error';
+                    uploadMessage.style.display = 'block';
+                }
+            } catch (error) {
+                btnText.style.display = 'inline';
+                btnLoading.style.display = 'none';
+                submitBtn.disabled = false;
+                uploadMessage.textContent = 'Có lỗi xảy ra: ' + error.message;
+                uploadMessage.className = 'message error';
+                uploadMessage.style.display = 'block';
+            }
+        });
+
+        // Webcam Controls
+        const videoFeed = document.getElementById('videoFeed');
+        const cameraPlaceholder = document.getElementById('cameraPlaceholder');
+        const startCameraBtn = document.getElementById('startCamera');
+        const stopCameraBtn = document.getElementById('stopCamera');
+        const captureBtn = document.getElementById('captureBtn');
+        const webcamMessage = document.getElementById('webcamMessage');
+        const webcamResults = document.getElementById('webcamResults');
+
+        startCameraBtn.addEventListener('click', function() {
+            videoFeed.src = '/video_feed';
+            videoFeed.style.display = 'block';
+            cameraPlaceholder.style.display = 'none';
+            startCameraBtn.style.display = 'none';
+            stopCameraBtn.style.display = 'inline-block';
+            captureBtn.style.display = 'inline-block';
+        });
+
+        stopCameraBtn.addEventListener('click', stopCameraFeed);
+
+        function stopCameraFeed() {
+            fetch('/stop_camera');
+            videoFeed.src = '';
+            videoFeed.style.display = 'none';
+            cameraPlaceholder.style.display = 'flex';
+            startCameraBtn.style.display = 'inline-block';
+            stopCameraBtn.style.display = 'none';
+            captureBtn.style.display = 'none';
+        }
+
+        captureBtn.addEventListener('click', async function() {
+            captureBtn.disabled = true;
+            webcamMessage.style.display = 'none';
+            webcamResults.innerHTML = '';
+
+            try {
+                const response = await fetch('/capture_attendance', {
+                    method: 'POST'
+                });
+
+                const result = await response.json();
+                captureBtn.disabled = false;
+
+                if (result.success) {
+                    webcamMessage.textContent = 'Điểm danh thành công!';
+                    webcamMessage.className = 'message success';
+                    webcamMessage.style.display = 'block';
+
+                    webcamResults.innerHTML = result.students.map(s => `
+                        <div class="result-card ${s.status}">
+                            <h4>${s.name}</h4>
+                            <p>Mã SV: ${s.student_id}</p>
+                            <p class="status-msg">${s.message}</p>
+                        </div>
+                    `).join('');
+                } else {
+                    webcamMessage.textContent = result.message;
+                    webcamMessage.className = 'message error';
+                    webcamMessage.style.display = 'block';
+                }
+            } catch (error) {
+                captureBtn.disabled = false;
+                webcamMessage.textContent = 'Có lỗi xảy ra: ' + error.message;
+                webcamMessage.className = 'message error';
+                webcamMessage.style.display = 'block';
+            }
+        });
+    </script>
+</body>
+</html>

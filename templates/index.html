@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hệ Thống Điểm Danh Sinh Viên</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="container">
+            <h1 class="logo">📸 Hệ Thống Điểm Danh</h1>
+            <ul class="nav-menu">
+                <li><a href="/" class="active">Trang chủ</a></li>
+                <li><a href="/register">Đăng ký</a></li>
+                <li><a href="/attendance">Điểm danh</a></li>
+                <li><a href="/history">Lịch sử</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="hero">
+            <h2>Chào mừng đến với Hệ Thống Điểm Danh Sinh Viên</h2>
+            <p>Sử dụng công nghệ nhận diện khuôn mặt để điểm danh nhanh chóng và chính xác</p>
+        </div>
+
+        <div class="features">
+            <div class="feature-card">
+                <div class="feature-icon">👤</div>
+                <h3>Đăng ký sinh viên</h3>
+                <p>Thêm sinh viên mới vào hệ thống với thông tin và ảnh khuôn mặt</p>
+                <a href="/register" class="btn btn-primary">Đăng ký ngay</a>
+            </div>
+
+            <div class="feature-card">
+                <div class="feature-icon">✅</div>
+                <h3>Điểm danh</h3>
+                <p>Điểm danh sinh viên bằng upload ảnh hoặc webcam real-time</p>
+                <a href="/attendance" class="btn btn-primary">Điểm danh</a>
+            </div>
+
+            <div class="feature-card">
+                <div class="feature-icon">📊</div>
+                <h3>Lịch sử</h3>
+                <p>Xem lại lịch sử điểm danh và thống kê chi tiết</p>
+                <a href="/history" class="btn btn-primary">Xem lịch sử</a>
+            </div>
+        </div>
+
+        <div class="stats-section">
+            <h3>Thống kê hệ thống</h3>
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-number" id="totalStudents">0</div>
+                    <div class="stat-label">Tổng sinh viên</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="todayAttendance">0</div>
+                    <div class="stat-label">Điểm danh hôm nay</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <footer>
+        <p>&copy; 2024 Hệ Thống Điểm Danh Sinh Viên | Powered by Face Recognition</p>
+    </footer>
+
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    <script>
+        // Load thống kê
+        fetch('/students')
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('totalStudents').textContent = data.length;
+            });
+
+        fetch('/history')
+            .then(response => response.text())
+            .then(html => {
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(html, 'text/html');
+                const rows = doc.querySelectorAll('table tbody tr');
+                const today = new Date().toISOString().split('T')[0];
+                let todayCount = 0;
+                
+                rows.forEach(row => {
+                    const dateCell = row.cells[2].textContent;
+                    if (dateCell.includes(today)) {
+                        todayCount++;
+                    }
+                });
+                
+                document.getElementById('todayAttendance').textContent = todayCount;
+            });
+    </script>
+</body>
+</html>

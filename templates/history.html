@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lịch Sử Điểm Danh</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="container">
+            <h1 class="logo">📸 Hệ Thống Điểm Danh</h1>
+            <ul class="nav-menu">
+                <li><a href="/">Trang chủ</a></li>
+                <li><a href="/register">Đăng ký</a></li>
+                <li><a href="/attendance">Điểm danh</a></li>
+                <li><a href="/history" class="active">Lịch sử</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <div class="container">
+        <h2>Lịch Sử Điểm Danh</h2>
+
+        <div class="filter-section">
+            <form id="filterForm" method="GET" action="/history">
+                <div class="form-group-inline">
+                    <label for="dateFilter">Lọc theo ngày:</label>
+                    <input type="date" id="dateFilter" name="date" value="{{ request.args.get('date', '') }}">
+                    <button type="submit" class="btn btn-primary">Lọc</button>
+                    <button type="button" class="btn btn-secondary" onclick="window.location.href='/history'">
+                        Xóa bộ lọc
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <div class="table-container">
+            {% if records %}
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>STT</th>
+                            <th>Mã SV</th>
+                            <th>Tên sinh viên</th>
+                            <th>Lớp</th>
+                            <th>Thời gian</th>
+                            <th>Trạng thái</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for record in records %}
+                        <tr>
+                            <td>{{ loop.index }}</td>
+                            <td>{{ record.student_id }}</td>
+                            <td>{{ record.name }}</td>
+                            <td>{{ record.class or 'N/A' }}</td>
+                            <td>{{ record.check_in_time }}</td>
+                            <td>
+                                <span class="badge badge-success">{{ record.status }}</span>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+
+                <div class="summary">
+                    <p><strong>Tổng số:</strong> {{ records|length }} bản ghi</p>
+                </div>
+            {% else %}
+                <div class="empty-state">
+                    <div class="empty-icon">📋</div>
+                    <p>Chưa có dữ liệu điểm danh</p>
+                    <a href="/attendance" class="btn btn-primary">Điểm danh ngay</a>
+                </div>
+            {% endif %}
+        </div>
+
+        <!-- Export Section -->
+        <div class="export-section">
+            <h3>Xuất dữ liệu</h3>
+            <button id="exportExcel" class="btn btn-success">📊 Xuất Excel</button>
+            <button id="exportPDF" class="btn btn-danger">📄 Xuất PDF</button>
+        </div>
+    </div>
+
+    <footer>
+        <p>&copy; 2024 Hệ Thống Điểm Danh Sinh Viên</p>
+    </footer>
+
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    <script>
+        // Set ngày hiện tại làm mặc định
+        const dateFilter = document.getElementById('dateFilter');
+        if (!dateFilter.value) {
+            dateFilter.value = new Date().toISOString().split('T')[0];
+        }
+
+        // Export to Excel (simple CSV)
+        document.getElementById('exportExcel').addEventListener('click', function() {
+            const table = document.querySelector('.data-table');
+            if (!table) {
+                alert('Không có dữ liệu để xuất');
+                return;
+            }
+
+            let csv = [];
+            const rows = table.querySelectorAll('tr');
+
+            rows.forEach(row => {
+                const cols = row.querySelectorAll('td, th');
+                const rowData = [];
+                cols.forEach(col => rowData.push(col.textContent));
+                csv.push(rowData.join(','));
+            });
+
+            const csvContent = csv.join('\n');
+            const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            const url = URL.createObjectURL(blob);
+            
+            link.setAttribute('href', url);
+            link.setAttribute('download', 'lich_su_diem_danh_' + new Date().toISOString().split('T')[0] + '.csv');
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        });
+
+        // Export to PDF (using window.print)
+        document.getElementById('exportPDF').addEventListener('click', function() {
+            window.print();
+        });
+    </script>
+</body>
+</html>

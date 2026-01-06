@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Đăng Ký Sinh Viên</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="container">
+            <h1 class="logo">📸 Hệ Thống Điểm Danh</h1>
+            <ul class="nav-menu">
+                <li><a href="/">Trang chủ</a></li>
+                <li><a href="/register" class="active">Đăng ký</a></li>
+                <li><a href="/attendance">Điểm danh</a></li>
+                <li><a href="/history">Lịch sử</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="form-container">
+            <h2>Đăng Ký Sinh Viên Mới</h2>
+            <p class="form-description">Vui lòng điền đầy đủ thông tin và upload ảnh khuôn mặt rõ nét</p>
+
+            <form id="registerForm" enctype="multipart/form-data">
+                <div class="form-group">
+                    <label for="student_id">Mã sinh viên *</label>
+                    <input type="text" id="student_id" name="student_id" required 
+                           placeholder="Ví dụ: SV001">
+                </div>
+
+                <div class="form-group">
+                    <label for="name">Họ và tên *</label>
+                    <input type="text" id="name" name="name" required 
+                           placeholder="Nguyễn Văn A">
+                </div>
+
+                <div class="form-group">
+                    <label for="email">Email</label>
+                    <input type="email" id="email" name="email" 
+                           placeholder="student@example.com">
+                </div>
+
+                <div class="form-group">
+                    <label for="phone">Số điện thoại</label>
+                    <input type="tel" id="phone" name="phone" 
+                           placeholder="0123456789">
+                </div>
+
+                <div class="form-group">
+                    <label for="class">Lớp</label>
+                    <input type="text" id="class" name="class" 
+                           placeholder="CNTT01">
+                </div>
+
+                <div class="form-group">
+                    <label for="image">Ảnh khuôn mặt *</label>
+                    <input type="file" id="image" name="image" accept="image/*" required>
+                    <small>Chỉ chứa 1 khuôn mặt, nhìn thẳng camera, ảnh rõ nét</small>
+                </div>
+
+                <div class="image-preview" id="imagePreview"></div>
+
+                <button type="submit" class="btn btn-primary btn-block">
+                    <span class="btn-text">Đăng Ký</span>
+                    <span class="btn-loading" style="display: none;">
+                        <span class="spinner"></span> Đang xử lý...
+                    </span>
+                </button>
+            </form>
+
+            <div id="message" class="message"></div>
+        </div>
+    </div>
+
+    <footer>
+        <p>&copy; 2024 Hệ Thống Điểm Danh Sinh Viên</p>
+    </footer>
+
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    <script>
+        const imageInput = document.getElementById('image');
+        const imagePreview = document.getElementById('imagePreview');
+        const registerForm = document.getElementById('registerForm');
+        const messageDiv = document.getElementById('message');
+
+        // Preview ảnh
+        imageInput.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    imagePreview.innerHTML = `
+                        <img src="${e.target.result}" alt="Preview">
+                        <p>Ảnh đã chọn: ${file.name}</p>
+                    `;
+                    imagePreview.style.display = 'block';
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+
+        // Submit form
+        registerForm.addEventListener('submit', async function(e) {
+            e.preventDefault();
+
+            const formData = new FormData(registerForm);
+            const btnText = document.querySelector('.btn-text');
+            const btnLoading = document.querySelector('.btn-loading');
+            const submitBtn = registerForm.querySelector('button[type="submit"]');
+
+            // Show loading
+            btnText.style.display = 'none';
+            btnLoading.style.display = 'inline-flex';
+            submitBtn.disabled = true;
+            messageDiv.style.display = 'none';
+
+            try {
+                const response = await fetch('/register', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const result = await response.json();
+
+                // Hide loading
+                btnText.style.display = 'inline';
+                btnLoading.style.display = 'none';
+                submitBtn.disabled = false;
+
+                // Show message
+                messageDiv.textContent = result.message;
+                messageDiv.className = result.success ? 'message success' : 'message error';
+                messageDiv.style.display = 'block';
+
+                if (result.success) {
+                    registerForm.reset();
+                    imagePreview.style.display = 'none';
+                    setTimeout(() => {
+                        window.location.href = '/';
+                    }, 2000);
+                }
+            } catch (error) {
+                btnText.style.display = 'inline';
+                btnLoading.style.display = 'none';
+                submitBtn.disabled = false;
+                messageDiv.textContent = 'Có lỗi xảy ra: ' + error.message;
+                messageDiv.className = 'message error';
+                messageDiv.style.display = 'block';
+            }
+        });
+    </script>
+</body>
+</html>
