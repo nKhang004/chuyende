@@ -49,16 +49,9 @@ class FaceRecognizer:
         if len(face_encodings) > 0:
             face_encoding = face_encodings[0]
             
-            # Kiểm tra xem khuôn mặt đã được đăng ký chưa
-            if len(self.known_face_encodings) > 0:
-                matches = face_recognition.compare_faces(
-                    self.known_face_encodings, 
-                    face_encoding, 
-                    tolerance=Config.FACE_RECOGNITION_TOLERANCE
-                )
-                if True in matches:
-                    matched_idx = matches.index(True)
-                    return False, f"Khuôn mặt đã được đăng ký cho sinh viên {self.known_student_ids[matched_idx]}"
+            # KIỂM TRA MÃ SV ĐÃ TỒN TẠI CHƯA (THAY VÌ KIỂM TRA KHUÔN MẶT)
+            if student_id in self.known_student_ids:
+                return False, f"Mã sinh viên {student_id} đã được đăng ký"
             
             # Thêm vào danh sách
             self.known_face_encodings.append(face_encoding)
@@ -102,12 +95,15 @@ class FaceRecognizer:
                 best_match_idx = np.argmin(face_distances)
                 
                 if matches[best_match_idx]:
-                    student_id = self.known_student_ids[best_match_idx]
                     confidence = 1 - face_distances[best_match_idx]
-                    recognized_students.append({
-                        'student_id': student_id,
-                        'confidence': float(confidence)
-                    })
+                    
+                    # THÊM KIỂM TRA: Chỉ chấp nhận nếu độ tin cậy >= 60%
+                    if confidence >= 0.60:
+                        student_id = self.known_student_ids[best_match_idx]
+                        recognized_students.append({
+                            'student_id': student_id,
+                            'confidence': float(confidence)
+                        })
         
         if recognized_students:
             return recognized_students, "Nhận diện thành công"

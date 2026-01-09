@@ -102,6 +102,12 @@ def attendance():
                     student = db.get_student(student_id)
                     
                     if student:
+                        # Kiểm tra độ tin cậy
+                        if confidence < 0.70:
+                            warning = " (Độ tin cậy thấp - Cần xác nhận)"
+                        else:
+                            warning = ""
+                        
                         # Điểm danh
                         success, att_message = db.mark_attendance(student_id, filename)
                         results.append({
@@ -109,7 +115,8 @@ def attendance():
                             'name': student['name'],
                             'confidence': f"{confidence:.2%}",
                             'status': 'success' if success else 'already_marked',
-                            'message': att_message
+                            'message': att_message + warning,
+                            'confidence_level': 'high' if confidence >= 0.70 else 'low'
                         })
                 
                 return jsonify({'success': True, 'students': results})
@@ -133,6 +140,33 @@ def students():
     """Danh sách sinh viên"""
     all_students = db.get_all_students()
     return jsonify(all_students)
+
+@app.route('/students/manage')
+def manage_students():
+    """Trang quản lý sinh viên"""
+    all_students = db.get_all_students()
+    return render_template('manage_students.html', students=all_students)
+
+@app.route('/students/delete/<student_id>', methods=['POST'])
+def delete_student(student_id):
+    """Xóa sinh viên"""
+    # Xóa khỏi database
+    success, message = db.delete_student(student_id)
+    
+    if success:
+        # Xóa face encoding
+        face_recognizer.delete_face_encoding(student_id)
+        
+        # Xóa ảnh (tùy chọn)
+        student = db.get_student(student_id)
+        if student and student.get('image_path'):
+            image_path = os.path.join(Config.UPLOAD_FOLDER, student['image_path'])
+            if os.path.exists(image_path):
+                os.remove(image_path)
+        
+        return jsonify({'success': True, 'message': message})
+    
+    return jsonify({'success': False, 'message': message})
 
 # API cho webcam real-time
 camera = None

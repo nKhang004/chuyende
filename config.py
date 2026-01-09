@@ -15,7 +15,7 @@ class Config:
     MAX_CONTENT_LENGTH = 16 * 1024 * 1024  # 16MB
     
     # Cấu hình nhận diện khuôn mặt
-    FACE_RECOGNITION_TOLERANCE = 0.6  # Độ chính xác (0.0 - 1.0, càng thấp càng nghiêm ngặt)
+    FACE_RECOGNITION_TOLERANCE = 0.3  # Độ chính xác (0.0 - 1.0, càng thấp càng nghiêm ngặt)
     FACE_DETECTION_MODEL = 'hog'  # 'hog' hoặc 'cnn' (cnn chính xác hơn nhưng chậm hơn)
     
     @staticmethod

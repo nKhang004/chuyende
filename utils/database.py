@@ -1,11 +1,17 @@
 import sqlite3
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 from config import Config
 
 class Database:
     def __init__(self):
         self.db_path = Config.DATABASE_PATH
         self.init_database()
+    
+    @staticmethod
+    def get_vietnam_time():
+        """Lấy thời gian Việt Nam (UTC+7)"""
+        vietnam_tz = timezone(timedelta(hours=7))
+        return datetime.now(vietnam_tz).strftime('%Y-%m-%d %H:%M:%S')
     
     def get_connection(self):
         """Tạo kết nối đến database"""
@@ -53,10 +59,11 @@ class Database:
         cursor = conn.cursor()
         
         try:
+            vietnam_time = self.get_vietnam_time()
             cursor.execute('''
-                INSERT INTO students (student_id, name, email, phone, class, image_path)
-                VALUES (?, ?, ?, ?, ?, ?)
-            ''', (student_id, name, email, phone, class_name, image_path))
+                INSERT INTO students (student_id, name, email, phone, class, image_path, created_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+            ''', (student_id, name, email, phone, class_name, image_path, vietnam_time))
             conn.commit()
             return True, "Thêm sinh viên thành công"
         except sqlite3.IntegrityError:
@@ -87,8 +94,11 @@ class Database:
         conn = self.get_connection()
         cursor = conn.cursor()
         
+        # Lấy thời gian Việt Nam
+        vietnam_time = self.get_vietnam_time()
+        today = vietnam_time.split(' ')[0]  # Lấy phần ngày
+        
         # Kiểm tra đã điểm danh hôm nay chưa
-        today = datetime.now().date()
         cursor.execute('''
             SELECT * FROM attendance 
             WHERE student_id = ? AND DATE(check_in_time) = ?
@@ -98,11 +108,11 @@ class Database:
             conn.close()
             return False, "Sinh viên đã điểm danh hôm nay"
         
-        # Thêm điểm danh mới
+        # Thêm điểm danh mới với thời gian Việt Nam
         cursor.execute('''
-            INSERT INTO attendance (student_id, image_path)
-            VALUES (?, ?)
-        ''', (student_id, image_path))
+            INSERT INTO attendance (student_id, image_path, check_in_time)
+            VALUES (?, ?, ?)
+        ''', (student_id, image_path, vietnam_time))
         conn.commit()
         conn.close()
         return True, "Điểm danh thành công"
@@ -132,3 +142,22 @@ class Database:
         records = cursor.fetchall()
         conn.close()
         return [dict(record) for record in records]
+    
+    def delete_student(self, student_id):
+        """Xóa sinh viên"""
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        
+        try:
+            # Xóa lịch sử điểm danh
+            cursor.execute('DELETE FROM attendance WHERE student_id = ?', (student_id,))
+            
+            # Xóa sinh viên
+            cursor.execute('DELETE FROM students WHERE student_id = ?', (student_id,))
+            
+            conn.commit()
+            return True, "Xóa sinh viên thành công"
+        except Exception as e:
+            return False, f"Lỗi khi xóa: {str(e)}"
+        finally:
+            conn.close()

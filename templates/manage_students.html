@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quản Lý Sinh Viên</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <style>
+        .actions {
+            display: flex;
+            gap: 10px;
+        }
+        .btn-delete {
+            background: #dc3545;
+            color: white;
+            padding: 8px 16px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+        .btn-delete:hover {
+            background: #c82333;
+        }
+        .student-image {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            object-fit: cover;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="container">
+            <h1 class="logo">📸 Hệ Thống Điểm Danh</h1>
+            <ul class="nav-menu">
+                <li><a href="/">Trang chủ</a></li>
+                <li><a href="/register">Đăng ký</a></li>
+                <li><a href="/attendance">Điểm danh</a></li>
+                <li><a href="/history">Lịch sử</a></li>
+                <li><a href="/students/manage" class="active">Quản lý SV</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <div class="container">
+        <h2>Quản Lý Sinh Viên</h2>
+
+        <div class="table-container">
+            {% if students %}
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>STT</th>
+                            <th>Ảnh</th>
+                            <th>Mã SV</th>
+                            <th>Tên sinh viên</th>
+                            <th>Email</th>
+                            <th>Số điện thoại</th>
+                            <th>Lớp</th>
+                            <th>Ngày đăng ký</th>
+                            <th>Hành động</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for student in students %}
+                        <tr id="student-{{ student.student_id }}">
+                            <td>{{ loop.index }}</td>
+                            <td>
+                                {% if student.image_path %}
+                                <img src="{{ url_for('static', filename='uploads/' + student.image_path) }}" 
+                                     alt="{{ student.name }}" class="student-image">
+                                {% else %}
+                                <span>Không có ảnh</span>
+                                {% endif %}
+                            </td>
+                            <td><strong>{{ student.student_id }}</strong></td>
+                            <td>{{ student.name }}</td>
+                            <td>{{ student.email or 'N/A' }}</td>
+                            <td>{{ student.phone or 'N/A' }}</td>
+                            <td>{{ student.class or 'N/A' }}</td>
+                            <td>{{ student.created_at }}</td>
+                            <td class="actions">
+                                <button class="btn-delete" onclick="deleteStudent('{{ student.student_id }}', '{{ student.name }}')">
+                                    🗑️ Xóa
+                                </button>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+
+                <div class="summary">
+                    <p><strong>Tổng số sinh viên:</strong> {{ students|length }}</p>
+                </div>
+            {% else %}
+                <div class="empty-state">
+                    <div class="empty-icon">👥</div>
+                    <p>Chưa có sinh viên nào được đăng ký</p>
+                    <a href="/register" class="btn btn-primary">Đăng ký sinh viên mới</a>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <footer>
+        <p>&copy; Hệ Thống Điểm Danh Sinh Viên | Đồ Án Môn Chuyên Đề - Nhóm 2</p>
+    </footer>
+
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    <script>
+        function deleteStudent(studentId, studentName) {
+            if (!confirm(`Bạn có chắc chắn muốn xóa sinh viên "${studentName}" (${studentId})?\n\nToàn bộ dữ liệu điểm danh của sinh viên này cũng sẽ bị xóa!`)) {
+                return;
+            }
+
+            const row = document.getElementById(`student-${studentId}`);
+            
+            fetch(`/students/delete/${studentId}`, {
+                method: 'POST'
+            })
+            .then(response => response.json())
+            .then(result => {
+                if (result.success) {
+                    // Xóa dòng khỏi bảng với animation
+                    row.style.background = '#f8d7da';
+                    row.style.transition = 'all 0.3s';
+                    
+                    setTimeout(() => {
+                        row.style.opacity = '0';
+                        setTimeout(() => {
+                            row.remove();
+                            
+                            // Kiểm tra nếu không còn sinh viên nào
+                            const tbody = document.querySelector('.data-table tbody');
+                            if (tbody.children.length === 0) {
+                                location.reload();
+                            }
+                            
+                            // Cập nhật STT
+                            updateRowNumbers();
+                        }, 300);
+                    }, 500);
+                    
+                    alert(result.message);
+                } else {
+                    alert('Lỗi: ' + result.message);
+                }
+            })
+            .catch(error => {
+                alert('Có lỗi xảy ra: ' + error.message);
+            });
+        }
+
+        function updateRowNumbers() {
+            const rows = document.querySelectorAll('.data-table tbody tr');
+            rows.forEach((row, index) => {
+                row.cells[0].textContent = index + 1;
+            });
+            
+            // Cập nhật tổng số
+            const summary = document.querySelector('.summary p strong');
+            if (summary) {
+                summary.nextSibling.textContent = ` ${rows.length}`;
+            }
+        }
+    </script>
+</body>
+</html>
